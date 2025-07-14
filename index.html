@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Snake Game </title>
+  <style>
+    body {
+      margin: 0;
+      background-color: #121212;
+      font-family: 'Segoe UI', sans-serif;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+    h1 {
+      margin-bottom: 10px;
+    }
+    #gameCanvas {
+      background-color: #0b3548;
+      border: 2px solid #444;
+    }
+    #score {
+      margin-top: 10px;
+      font-size: 1.2rem;
+    }
+    #gameOver {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      text-align: center;
+      color: #ff4c4c;
+      font-size: 2rem;
+      display: none;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px 20px;
+      background-color: #ff4c4c;
+      border: none;
+      color: white;
+      font-size: 1rem;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #ff1e1e;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>🐍 Snake Game</h1>
+  <p>developed by Sumaya ,  Parvez, Bablu, Humayra</p>
+  <p>Instructor: Mustafa Rahman , Software Engineer,Turkey</p>
+
+  <canvas id="gameCanvas" width="400" height="400"></canvas>
+  <div id="score">Score: 0</div>
+  <div id="gameOver">
+    <p>💀 Game Over</p>
+    <button onclick="restartGame()">Restart</button>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const scoreDisplay = document.getElementById('score');
+    const gameOverDisplay = document.getElementById('gameOver');
+
+    const box = 20;
+    const canvasSize = 400;
+    const rows = canvasSize / box;
+    const cols = canvasSize / box;
+
+    let snake = [{ x: box * 5, y: box * 5 }];
+    let direction = 'RIGHT';
+    let food = spawnFood();
+    let score = 0;
+    let game;
+
+    function draw() {
+      ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+      // Draw snake
+      snake.forEach((segment, index) => {
+        ctx.fillStyle = index === 0 ? '#4caf50' : '#76ff03';
+        ctx.fillRect(segment.x, segment.y, box, box);
+      });
+
+      // Draw food
+      ctx.fillStyle = '#ff5722';
+      ctx.fillRect(food.x, food.y, box, box);
+
+      // Move snake
+      let head = { ...snake[0] };
+      if (direction === 'LEFT') head.x -= box;
+      if (direction === 'RIGHT') head.x += box;
+      if (direction === 'UP') head.y -= box;
+      if (direction === 'DOWN') head.y += box;
+
+      // Game over: hit wall
+      if (head.x < 0 || head.x >= canvasSize || head.y < 0 || head.y >= canvasSize) {
+        endGame();
+        return;
+      }
+
+      // Game over: hit self
+      for (let segment of snake.slice(1)) {
+        if (segment.x === head.x && segment.y === head.y) {
+          endGame();
+          return;
+        }
+      }
+
+      // Eat food
+      if (head.x === food.x && head.y === food.y) {
+        food = spawnFood();
+        score += 10;
+        scoreDisplay.textContent = `Score: ${score}`;
+      } else {
+        snake.pop();
+      }
+
+      snake.unshift(head);
+    }
+
+    function spawnFood() {
+      let foodX, foodY;
+      do {
+        foodX = Math.floor(Math.random() * cols) * box;
+        foodY = Math.floor(Math.random() * rows) * box;
+      } while (snake.some(segment => segment.x === foodX && segment.y === foodY));
+      return { x: foodX, y: foodY };
+    }
+
+    function endGame() {
+      clearInterval(game);
+      gameOverDisplay.style.display = 'block';
+    }
+
+    function restartGame() {
+      snake = [{ x: box * 5, y: box * 5 }];
+      direction = 'RIGHT';
+      food = spawnFood();
+      score = 0;
+      scoreDisplay.textContent = 'Score: 0';
+      gameOverDisplay.style.display = 'none';
+      game = setInterval(draw, 1000);
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
+      else if (e.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
+      else if (e.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
+      else if (e.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+    });
+
+    game = setInterval(draw, 1000);
+  </script>
+</body>
+</html>
