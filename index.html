@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Snake Game </title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Snake Game</title>
   <style>
     body {
       margin: 0;
@@ -13,20 +13,52 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
+      justify-content: flex-start;
+      padding-top: 30px;
     }
-    h1 {
+
+    .header {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #e0f7fa;
+    }
+
+    .header h1 {
+      font-size: 2.5rem;
+      color: #00e676;
+      text-shadow: 1px 1px 4px #000;
       margin-bottom: 10px;
     }
+
+    .header p {
+      margin: 5px 0;
+      font-size: 1rem;
+      line-height: 1.4;
+    }
+
+    .developers {
+      color: #a7ffeb;
+      font-weight: 500;
+    }
+
+    .instructor {
+      color: #ffd54f;
+      font-weight: 500;
+    }
+
     #gameCanvas {
       background-color: #0b3548;
       border: 2px solid #444;
+      border-radius: 10px;
+      margin-top: 10px;
     }
+
     #score {
       margin-top: 10px;
-      font-size: 1.2rem;
+      font-size: 1.3rem;
+      font-weight: bold;
     }
+
     #gameOver {
       position: absolute;
       top: 50%;
@@ -35,7 +67,9 @@
       color: #ff4c4c;
       font-size: 2rem;
       display: none;
+      z-index: 10;
     }
+
     button {
       margin-top: 15px;
       padding: 10px 20px;
@@ -46,22 +80,79 @@
       border-radius: 5px;
       cursor: pointer;
     }
+
     button:hover {
       background-color: #ff1e1e;
+    }
+
+    .controls {
+      margin-top: 15px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .control-row {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+    }
+
+    .control-btn {
+      width: 50px;
+      height: 50px;
+      background-color: #1e88e5;
+      color: white;
+      border: none;
+      font-size: 1.5rem;
+      border-radius: 10px;
+      cursor: pointer;
+    }
+
+    .control-btn:hover {
+      background-color: #1565c0;
+    }
+
+    @media (max-width: 500px) {
+      .control-btn {
+        width: 40px;
+        height: 40px;
+        font-size: 1.2rem;
+      }
     }
   </style>
 </head>
 <body>
 
-  <h1>🐍 Snake Game</h1>
-  <p>developed by Sumaya ,  Parvez, Bablu, Humayra</p>
-  <p>Instructor: Mustafa Rahman , Software Engineer,Turkey</p>
+  <div class="header">
+    <h1>🐍 Snake Game</h1>
+    <p class="developers">Developed by <strong>Sumaya</strong>, <strong>Parvez</strong>, <strong>Bablu</strong>, <strong>Humayra</strong></p>
+    <p class="instructor">Instructor: <strong>Mustafa Rahman</strong> — Software Engineer, Turkey 🇹🇷</p>
+  </div>
 
   <canvas id="gameCanvas" width="400" height="400"></canvas>
   <div id="score">Score: 0</div>
+
   <div id="gameOver">
     <p>💀 Game Over</p>
     <button onclick="restartGame()">Restart</button>
+  </div>
+
+  <!-- Sound effects -->
+  <audio id="eatSound" src="./game sound/eat-sound.mp3"></audio>
+  <audio id="gameOverSound" src="./game sound/game-over.mp3"></audio>
+  <audio id="winSound" src="./game sound/game-win.mp3"></audio>
+
+  <!-- Arrow Controls -->
+  <div class="controls">
+    <div class="control-row">
+      <button class="control-btn" onclick="setDirection('UP')">↑</button>
+    </div>
+    <div class="control-row">
+      <button class="control-btn" onclick="setDirection('LEFT')">←</button>
+      <button class="control-btn" onclick="setDirection('DOWN')">↓</button>
+      <button class="control-btn" onclick="setDirection('RIGHT')">→</button>
+    </div>
   </div>
 
   <script>
@@ -69,6 +160,10 @@
     const ctx = canvas.getContext('2d');
     const scoreDisplay = document.getElementById('score');
     const gameOverDisplay = document.getElementById('gameOver');
+
+    const eatSound = document.getElementById('eatSound');
+    const gameOverSound = document.getElementById('gameOverSound');
+    const winSound = document.getElementById('winSound');
 
     const box = 20;
     const canvasSize = 400;
@@ -80,6 +175,7 @@
     let food = spawnFood();
     let score = 0;
     let game;
+    const WINNING_SCORE = 100;
 
     function draw() {
       ctx.clearRect(0, 0, canvasSize, canvasSize);
@@ -87,12 +183,16 @@
       // Draw snake
       snake.forEach((segment, index) => {
         ctx.fillStyle = index === 0 ? '#4caf50' : '#76ff03';
-        ctx.fillRect(segment.x, segment.y, box, box);
+        ctx.beginPath();
+        ctx.roundRect(segment.x, segment.y, box, box, 6);
+        ctx.fill();
       });
 
       // Draw food
       ctx.fillStyle = '#ff5722';
-      ctx.fillRect(food.x, food.y, box, box);
+      ctx.beginPath();
+      ctx.arc(food.x + box / 2, food.y + box / 2, box / 2 - 2, 0, Math.PI * 2);
+      ctx.fill();
 
       // Move snake
       let head = { ...snake[0] };
@@ -101,25 +201,25 @@
       if (direction === 'UP') head.y -= box;
       if (direction === 'DOWN') head.y += box;
 
-      // Game over: hit wall
-      if (head.x < 0 || head.x >= canvasSize || head.y < 0 || head.y >= canvasSize) {
+      // Game over: wall or self
+      if (head.x < 0 || head.x >= canvasSize || head.y < 0 || head.y >= canvasSize ||
+          snake.slice(1).some(segment => segment.x === head.x && segment.y === head.y)) {
+        gameOverSound.play();
         endGame();
         return;
       }
 
-      // Game over: hit self
-      for (let segment of snake.slice(1)) {
-        if (segment.x === head.x && segment.y === head.y) {
-          endGame();
-          return;
-        }
-      }
-
       // Eat food
       if (head.x === food.x && head.y === food.y) {
+        eatSound.play();
         food = spawnFood();
         score += 10;
         scoreDisplay.textContent = `Score: ${score}`;
+        if (score >= WINNING_SCORE) {
+          winSound.play();
+          endGame();
+          return;
+        }
       } else {
         snake.pop();
       }
@@ -148,17 +248,39 @@
       score = 0;
       scoreDisplay.textContent = 'Score: 0';
       gameOverDisplay.style.display = 'none';
-      game = setInterval(draw, 1000);
+      game = setInterval(draw, 150);
+    }
+
+    function setDirection(dir) {
+      if (dir === 'LEFT' && direction !== 'RIGHT') direction = 'LEFT';
+      if (dir === 'RIGHT' && direction !== 'LEFT') direction = 'RIGHT';
+      if (dir === 'UP' && direction !== 'DOWN') direction = 'UP';
+      if (dir === 'DOWN' && direction !== 'UP') direction = 'DOWN';
     }
 
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'ArrowLeft' && direction !== 'RIGHT') direction = 'LEFT';
-      else if (e.key === 'ArrowUp' && direction !== 'DOWN') direction = 'UP';
-      else if (e.key === 'ArrowRight' && direction !== 'LEFT') direction = 'RIGHT';
-      else if (e.key === 'ArrowDown' && direction !== 'UP') direction = 'DOWN';
+      if (e.key === 'ArrowLeft') setDirection('LEFT');
+      if (e.key === 'ArrowUp') setDirection('UP');
+      if (e.key === 'ArrowRight') setDirection('RIGHT');
+      if (e.key === 'ArrowDown') setDirection('DOWN');
     });
 
-    game = setInterval(draw, 1000);
+    // Rounded rectangle for snake
+    CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+      this.beginPath();
+      this.moveTo(x + r, y);
+      this.lineTo(x + w - r, y);
+      this.quadraticCurveTo(x + w, y, x + w, y + r);
+      this.lineTo(x + w, y + h - r);
+      this.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      this.lineTo(x + r, y + h);
+      this.quadraticCurveTo(x, y + h, x, y + h - r);
+      this.lineTo(x, y + r);
+      this.quadraticCurveTo(x, y, x + r, y);
+      this.closePath();
+    }
+
+    game = setInterval(draw, 150);
   </script>
 </body>
 </html>
